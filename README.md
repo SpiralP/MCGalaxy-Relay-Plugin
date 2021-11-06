@@ -13,7 +13,6 @@ This makes use of the PluginMessage CPE to route messages from players to other 
 
 Run: `dotnet build --configuration Release`
 
-### Used in
+### (eventually) Used in
 
 - https://github.com/SpiralP/classicube-cef-plugin
-- https://github.com/SpiralP/classicube-chatsounds-plugin
