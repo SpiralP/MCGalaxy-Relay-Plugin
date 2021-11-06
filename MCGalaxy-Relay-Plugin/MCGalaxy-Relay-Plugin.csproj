@@ -7,7 +7,7 @@
     <ProjectGuid>{1B337585-68F5-4BF0-9000-E0AE94D0F225}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MCGalaxy_Relay_Plugin</RootNamespace>
+    <RootNamespace>MCGalaxy</RootNamespace>
     <AssemblyName>MCGalaxy-Relay-Plugin</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -41,8 +41,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="RelayPlugin.cs" />
+    <Compile Include="MCGalaxy-Relay-Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MCGalaxy\MCGalaxy\MCGalaxy_.csproj" />
+  </ItemGroup>
+  <ItemGroup>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
