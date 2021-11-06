@@ -1,21 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MCGalaxy.Events.ServerEvents;
 
 namespace MCGalaxy {
     public sealed partial class MCGalaxyRelayPlugin : Plugin {
-        public override string name => throw new NotImplementedException();
+        public override string name => "CustomModels";
+        public override string creator => "SpiralP";
 
-        public override string MCGalaxy_Version => throw new NotImplementedException();
+        // TODO bump version for PluginMessages CPE
+        public override string MCGalaxy_Version => "1.9.3.5";
 
-        public override void Load(bool auto) {
-            throw new NotImplementedException();
+        public override void Load(bool isStartup) {
+            OnPluginMessageReceivedEvent.Register(OnPluginMessageReceived, Priority.Low);
         }
 
-        public override void Unload(bool auto) {
-            throw new NotImplementedException();
+        public override void Unload(bool isShutdown) {
+            OnPluginMessageReceivedEvent.Unregister(OnPluginMessageReceived);
         }
     }
 }

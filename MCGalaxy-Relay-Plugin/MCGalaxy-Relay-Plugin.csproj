@@ -41,7 +41,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Events.cs" />
+    <Compile Include="Helpers.cs" />
+    <Compile Include="IncomingPacket.cs" />
     <Compile Include="MCGalaxy-Relay-Plugin.cs" />
+    <Compile Include="Scope.cs" />
+    <Compile Include="Types.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

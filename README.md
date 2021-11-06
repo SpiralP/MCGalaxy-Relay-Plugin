@@ -7,7 +7,7 @@ This makes use of the PluginMessage CPE to route messages from players to other 
 - Download the latest dll from [GitHub Releases](https://github.com/SpiralP/MCGalaxy-Relay-Plugin/releases/latest):
   - [MCGalaxy-Relay-Plugin.dll](https://github.com/SpiralP/MCGalaxy-Relay-Plugin/releases/latest/download/MCGalaxy-Relay-Plugin.dll)
 - Copy `MCGalaxy-Relay-Plugin.dll` into the `plugins` folder where `MCGalaxy.exe` lives
-- Run `/plugin load MCGalaxy-Relay-Plugin`
+- Run `/plugin load MCGalaxy-Relay-Plugin` (or restart MCGalaxy)
 
 ## Compiling
 
