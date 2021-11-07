@@ -57,8 +57,8 @@ union ToClientPacket {
 }
 
 // u8
-// is_packet_start: 1000_0000
-// stream_id: 0111_1111
+// is_packet_start: mask 1000_0000
+// stream_id: mask 0111_1111
 struct Flags {
     // is a start packet, or is a continuation
     is_packet_start: bool,
@@ -79,6 +79,7 @@ enum Scope {
 
     // all players in my map
     Map {
+        // mask 1000_0000
         // only send to those that have the same plugin that uses the same channel
         // this was sent from
         have_plugin: bool,
@@ -86,6 +87,7 @@ enum Scope {
 
     // all players in my server
     Server {
+        // mask 1000_0000
         have_plugin: bool,
     },
 }

@@ -64,7 +64,7 @@ namespace MCGalaxy {
             public ScopeMap(Level level, byte channel, byte b) {
                 this.level = level;
                 this.channel = channel;
-                samePlugin = b != 0;
+                samePlugin = (b & 0b1000_000) != 0;
             }
 
             public Player[] GetTargets() {
@@ -92,7 +92,7 @@ namespace MCGalaxy {
             private bool samePlugin;
             public ScopeServer(byte channel, byte b) {
                 this.channel = channel;
-                samePlugin = b != 0;
+                samePlugin = (b & 0b1000_000) != 0;
             }
 
             public Player[] GetTargets() {

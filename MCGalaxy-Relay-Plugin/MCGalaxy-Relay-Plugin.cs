@@ -2,7 +2,7 @@
 
 namespace MCGalaxy {
     public sealed partial class MCGalaxyRelayPlugin : Plugin {
-        public override string name => "CustomModels";
+        public override string name => "Relay";
         public override string creator => "SpiralP";
 
         // TODO bump version for PluginMessages CPE
