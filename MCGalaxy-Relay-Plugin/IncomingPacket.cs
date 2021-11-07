@@ -1,27 +1,57 @@
 using System;
+using System.Collections.Generic;
 using MCGalaxy.Network;
 
 namespace MCGalaxy {
     public sealed partial class MCGalaxyRelayPlugin {
-        public interface IIncomingPacket {
-            void Relay();
+
+        public abstract class IncomingPacket {
+            public Player sender;
+            public byte channel;
+            public Flags flags;
+            public Flags outgoingFlags;
+            public Scope scope;
+            public byte[] data;
+
+            public static IncomingPacket TryCreate(Player sender, byte channel, byte[] data) {
+                int i = 0;
+                Flags flags = Flags.Decode(data[i++]);
+
+                byte[] nextData = new byte[data.Length - i];
+                Array.Copy(data, i, nextData, 0, nextData.Length);
+
+                if (flags.isStart) {
+                    return IncomingStartPacket.TryCreate(sender, channel, flags, nextData);
+                } else {
+                    return IncomingContinuationPacket.TryCreate(sender, channel, flags, nextData);
+                }
+            }
+
+            public void ReserveTargetIds() {
+                // begin reserving ids
+                scope.ReserveTargetIds();
+            }
+
+            public abstract byte[] BuildOutgoingPacket(PacketTarget target);
+
+            public void Relay() {
+                foreach (var target in scope.targets) {
+                    byte[] data = BuildOutgoingPacket(target);
+                    target.player.Send(Packet.PluginMessage(channel, data));
+                }
+            }
         }
 
 
-        public class IncomingStartPacket : IIncomingPacket {
-            private Player sender;
-            private byte channel;
-            private Flags flags;
-            private IScope scope;
+        public class IncomingStartPacket : IncomingPacket {
             private UInt16 packetSize;
-            private byte[] data;
 
             public static IncomingStartPacket TryCreate(Player sender, byte channel, Flags flags, byte[] data) {
                 int i = 0;
 
-                byte nScopeKind = data[i++];
-                byte nScopeExtra = data[i++];
-                IScope scope = TryGetScope(sender, channel, nScopeKind, nScopeExtra);
+                byte scopeKind = data[i++];
+                byte scopeExtra = data[i++];
+                Scope scope = Scope.TryCreate(sender, channel, flags.packetId, scopeKind, scopeExtra);
 
                 UInt16 packetSize = NetUtils.ReadU16(data, i);
                 i += 2;
@@ -39,12 +69,14 @@ namespace MCGalaxy {
                 };
             }
 
-            private byte[] BuildOutgoingPacket() {
+            public override byte[] BuildOutgoingPacket(PacketTarget target) {
                 byte[] data = new byte[Packet.PluginMessageDataLength];
 
                 int i = 0;
-                // TODO convert packetId
-                data[i++] = flags.Encode();
+                data[i++] = new Flags {
+                    isStart = true,
+                    packetId = target.packetId,
+                }.Encode();
                 data[i++] = sender.id;
                 NetUtils.WriteU16(packetSize, data, i);
                 i += 2;
@@ -56,27 +88,22 @@ namespace MCGalaxy {
 
                 return data;
             }
-
-            public void Relay() {
-                byte[] data = BuildOutgoingPacket();
-
-                foreach (var target in scope.GetTargets()) {
-                    target.Send(Packet.PluginMessage(channel, data));
-                }
-            }
         }
 
 
-        public class IncomingContinuationPacket : IIncomingPacket {
-            private Player sender;
-            private byte channel;
-            private Flags flags;
-            private IScope scope;
-            private byte[] data;
-
+        public class IncomingContinuationPacket : IncomingPacket {
             public static IncomingContinuationPacket TryCreate(Player sender, byte channel, Flags flags, byte[] data) {
-                IScope scope = null;
-                // TODO get scope from packetId
+                Scope scope = Scope.GetForSender(sender, channel);
+
+                if (scope == null) {
+                    throw new Exception(
+                        string.Format(
+                            "couldn't find scope for {0} {1}",
+                            channel, sender.truename
+                        )
+                    );
+                }
+
                 return new IncomingContinuationPacket {
                     sender = sender,
                     channel = channel,
@@ -86,13 +113,14 @@ namespace MCGalaxy {
                 };
             }
 
-
-            private byte[] BuildOutgoingPacket() {
+            public override byte[] BuildOutgoingPacket(PacketTarget target) {
                 byte[] data = new byte[Packet.PluginMessageDataLength];
 
                 int i = 0;
-                // TODO convert packetId
-                data[i++] = flags.Encode();
+                data[i++] = new Flags {
+                    isStart = false,
+                    packetId = target.packetId,
+                }.Encode();
 
                 if (this.data.Length > data.Length - i) {
                     throw new Exception("!");
@@ -100,14 +128,6 @@ namespace MCGalaxy {
                 Array.Copy(this.data, 0, data, i, data.Length - i);
 
                 return data;
-            }
-
-            public void Relay() {
-                byte[] data = BuildOutgoingPacket();
-
-                foreach (var target in scope.GetTargets()) {
-                    target.Send(Packet.PluginMessage(channel, data));
-                }
             }
         }
 

@@ -2,9 +2,11 @@
 namespace MCGalaxy {
     public sealed partial class MCGalaxyRelayPlugin {
 
+        // only act on channels >= RelayChannelStartIndex
+        public const byte RelayChannelStartIndex = 127;
         public enum ChannelType : byte {
-            Cef = 16,
-            VoiceChat = 17,
+            Cef = 127,
+            VoiceChat = 128,
         }
 
 
