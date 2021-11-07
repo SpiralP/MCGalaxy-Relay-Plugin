@@ -12,6 +12,13 @@ namespace MCGalaxy {
             = new Dictionary<PlayerIdToPacketId, PlayerIdToPacketId>();
 
 
+        // TODO clear on disconnect
+
+        // remember who said what channel ids;
+        // this is used in HasPlugin() for knowing who can receive a certain channel id
+        private static Dictionary<byte, List<byte>> PlayerSentOnChannel = new Dictionary<byte, List<byte>>();
+
+
         public static void OnPluginMessageReceived(Player p, byte channel, byte[] data) {
             Logger.Log(
                 LogType.Debug,

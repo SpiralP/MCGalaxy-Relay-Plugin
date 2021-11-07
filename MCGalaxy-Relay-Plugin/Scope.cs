@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace MCGalaxy {
@@ -110,18 +111,12 @@ namespace MCGalaxy {
             }
         }
 
-        public static bool HasPlugin(Player p, byte channelType) {
 
-            // TODO convert these to add to the cpe string list instead
-            if (channelType == (byte)ChannelType.Cef) {
-                // TODO version check
-                return true;
-            } else if (channelType == (byte)ChannelType.VoiceChat) {
-                // TODO version check
-                return true;
+        public static bool HasPlugin(Player p, byte channelType) {
+            if (PlayerSentOnChannel.TryGetValue(p.id, out List<byte> knownChannels)) {
+                return knownChannels.Contains(channelType);
             } else {
-                // assume yes
-                return true;
+                return false;
             }
         }
 
