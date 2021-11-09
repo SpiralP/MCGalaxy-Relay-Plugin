@@ -49,25 +49,35 @@ namespace MCGalaxy {
 
                 foreach (var target in targets) {
                     byte[] data = BuildOutgoingPacket(target);
-                    target.player.Send(Packet.PluginMessage(channel, data));
+                    try {
+                        target.player.Send(Packet.PluginMessage(channel, data));
+                    } catch (Exception e) {
+                        Warn(
+                            "Exception when sending PluginMessage from {0} to {1}: {2}",
+                            sender.truename,
+                            target.player.truename,
+                            e
+                        );
+                        return;
+                    }
                 }
+            }
 
+            public void CheckCleanup(StreamTarget[] targets) {
+                Store.With(channel, (store) => {
+                    foreach (var target in targets) {
+                        target.Sent((UInt16)this.data.Length);
 
-                foreach (var target in targets) {
-                    target.Sent((UInt16)this.data.Length);
-
-                    if (target.IsFinished()) {
-                        Store.With(channel, (store) => {
+                        if (target.IsFinished()) {
                             Debug(
                                 "stream finished for {0} ({1})",
                                 sender.truename,
                                 this.flags.streamId
                             );
                             store.CleanupFromSender(sender, this.flags.streamId);
-                        });
+                        }
                     }
-                }
-
+                });
             }
         }
 

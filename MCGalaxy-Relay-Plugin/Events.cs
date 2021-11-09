@@ -51,7 +51,7 @@ namespace MCGalaxy {
                     "Relay {0}: {1} {2} {3} ({4}) -> [ {5} ]",
                     (ChannelType)channel,
                     packet.flags.isStart ? "start" : "continue",
-                    packet.flags.isStart ? ((IncomingStartPacket)packet).scope.kind : "",
+                    packet.flags.isStart ? "" + ((IncomingStartPacket)packet).scope.kind : "",
                     sender.truename,
                     packet.flags.streamId,
                     targets
@@ -59,6 +59,10 @@ namespace MCGalaxy {
                         .Join(", ")
                 );
             } catch (Exception e) {
+                // This happens when a continue packet is received without previously
+                // seeing a start packet.
+                // We don't need to do any cleanup here because the start packet is the one
+                // to do any setup.
                 Warn(
                     "Exception when trying to reserve ids from {0}: {1}",
                     sender.truename, e
@@ -66,14 +70,8 @@ namespace MCGalaxy {
                 return;
             }
 
-
-            try {
-                packet.Relay(targets);
-            } catch (Exception e) {
-                Warn("Exception when sending PluginMessage from {0}: {1}", sender.truename, e);
-                // TODO what do?
-            }
-
+            packet.Relay(targets);
+            packet.CheckCleanup(targets);
         }
 
 
