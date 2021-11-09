@@ -15,46 +15,31 @@ Run: `dotnet build --configuration Release`
 
 ### (eventually) Used in
 
+- https://github.com/SpiralP/rust-classicube-relay
 - https://github.com/SpiralP/classicube-cef-plugin
 
 ## Packets
 
 ```rust
-struct FromClientStartPacket {
+struct StartPacket {
     flags: u8,
+    // this is always Player if sending from server
     scope: u16,
-    stream_size: u16,
+    data_length: u16,
     data_part: [u8; 64 - 2 * 2 - 1],
 }
 
-struct FromClientContinuePacket {
+struct ContinuePacket {
     flags: u8,
     continue_data: [u8; 64 - 1],
 }
 
 // [u8; 64]
-union FromClientPacket {
-    start_packet: FromClientStartPacket,
-    continue_packet: FromClientContinuePacket,
+union Packet {
+    start_packet: StartPacket,
+    continue_packet: ContinuePacket,
 }
 
-struct ToClientStartPacket {
-    flags: u8,
-    sender_id: u8,
-    stream_size: u16,
-    data_part: [u8; 64 - 2 - 1 * 2],
-}
-
-struct ToClientContinuePacket {
-    flags: u8,
-    continue_data: [u8; 64 - 1],
-}
-
-// [u8; 64]
-union ToClientPacket {
-    start_packet: ToClientStartPacket,
-    continue_packet: ToClientContinuePacket,
-}
 
 // u8
 // is_packet_start: mask 1000_0000
@@ -73,8 +58,9 @@ struct Flags {
 enum Scope {
     // a single player
     Player {
-        // target player id
-        target_id: u8,
+        // target player id if from client
+        // sender player id if from server
+        id: u8,
     },
 
     // all players in my map
