@@ -39,9 +39,15 @@ namespace MCGalaxy {
             // [Player target][outgoing stream id] = exists
             public ConcurrentDictionary<Player, HashSet<byte>> outgoingIds;
 
+            // [Player sender][incoming stream id] = timer
+            // after timeout is reached, we free reserved ids
+            private ConcurrentDictionary<Player, ConcurrentDictionary<byte, System.Timers.Timer>> timers;
+
+
             public Store() {
                 this.incomingIds = new ConcurrentDictionary<Player, ConcurrentDictionary<byte, StreamTarget[]>>();
                 this.outgoingIds = new ConcurrentDictionary<Player, HashSet<byte>>();
+                this.timers = new ConcurrentDictionary<Player, ConcurrentDictionary<byte, System.Timers.Timer>>();
             }
 
             private static ConcurrentDictionary<byte, Store> ForChannel = new ConcurrentDictionary<byte, Store>();
@@ -110,10 +116,14 @@ namespace MCGalaxy {
 
                 var idToTargets = incomingIds.GetOrAdd(scope.sender, (_) => new ConcurrentDictionary<byte, StreamTarget[]>());
                 // make note of new stream from client
-                return idToTargets.AddOrUpdate(scope.streamId, (_) => targets, (_, _) => {
+                var ag = idToTargets.AddOrUpdate(scope.streamId, (_) => targets, (_, _) => {
                     Debug("restarting stream for {0} ({1})", scope.sender.truename, scope.streamId);
                     return targets;
                 });
+
+                StartTimeoutTimer(scope.sender, scope.streamId);
+
+                return ag;
             }
 
             public StreamTarget[] GetTargets(Player sender, byte streamId) {
@@ -143,6 +153,11 @@ namespace MCGalaxy {
             }
 
             private void HandlePlayerDisconnect(Player p) {
+                if (this.timers.TryRemove(p, out var timers)) {
+                    foreach (var pair in timers) {
+                        ClearTimeoutTimer(p, pair.Key);
+                    }
+                }
                 if (this.outgoingIds.TryRemove(p, out var outgoingIds)) {
                     Debug(
                         "player disconnected with {0} outgoing streams left",
@@ -167,6 +182,7 @@ namespace MCGalaxy {
                     "cleanup for sender {0}",
                     sender.truename
                 );
+                ClearTimeoutTimer(sender, incomingStreamId);
                 if (incomingIds.TryGetValue(sender, out var idToTargets)) {
                     // make note of new stream from client
                     if (idToTargets.TryRemove(incomingStreamId, out var targets)) {
@@ -183,6 +199,42 @@ namespace MCGalaxy {
                 );
                 if (this.outgoingIds.TryGetValue(target.player, out var outgoingIds)) {
                     outgoingIds.Remove(target.streamId);
+                }
+            }
+
+
+
+            private void StartTimeoutTimer(Player sender, byte incomingStreamId) {
+                var timers = this.timers.GetOrAdd(sender, (_) => new ConcurrentDictionary<byte, System.Timers.Timer>());
+                timers.AddOrUpdate(incomingStreamId, (_) => {
+                    Debug("new timer");
+                    // TODO 10 seconds?
+                    var timer = new System.Timers.Timer(10 * 1000) {
+                        AutoReset = false
+                    };
+                    timer.Elapsed += (obj, elapsedEventArgs) => {
+                        timer.Stop();
+                        timer.Dispose();
+
+                        Debug("timer finished, cleaning up sender {0} ({1})", sender.truename, incomingStreamId);
+                        CleanupFromSender(sender, incomingStreamId);
+                    };
+                    timer.Start();
+                    return timer;
+                }, (_, timer) => {
+                    // restart if existing
+                    Debug("restart existing timer");
+                    timer.Stop();
+                    timer.Start();
+                    return timer;
+                });
+            }
+            private void ClearTimeoutTimer(Player sender, byte incomingStreamId) {
+                if (this.timers.TryGetValue(sender, out var timers)) {
+                    if (timers.TryRemove(incomingStreamId, out var timer)) {
+                        timer.Stop();
+                        timer.Dispose();
+                    }
                 }
             }
 
