@@ -1,17 +1,34 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MCGalaxy {
     public sealed partial class MCGalaxyRelayPlugin {
-        // TODO concurrent dictionary all
-
-        public struct StreamTarget {
+        public class StreamTarget {
             public Player player;
             public byte streamId;
-            // TODO sent bytes (to know when to remove)
             public UInt16 dataLength;
             public UInt16 dataSent;
+
+            public StreamTarget(
+                Player player,
+                byte streamId,
+                UInt16 dataLength
+            ) {
+                this.player = player;
+                this.streamId = streamId;
+                this.dataLength = dataLength;
+                this.dataSent = 0;
+            }
+
+            public void Sent(UInt16 sentLength) {
+                this.dataSent += sentLength;
+            }
+
+            public bool IsFinished() {
+                return dataSent >= dataLength;
+            }
         }
 
         public class Store {
@@ -27,8 +44,6 @@ namespace MCGalaxy {
                 this.outgoingIds = new ConcurrentDictionary<Player, HashSet<byte>>();
             }
 
-
-            // TODO cleanup on disconnect or stream finished
             private static ConcurrentDictionary<byte, Store> ForChannel = new ConcurrentDictionary<byte, Store>();
             private static ConcurrentDictionary<byte, object> ForChannelLocks = new ConcurrentDictionary<byte, object>();
             private static object GetCacheLock(byte channel) {
@@ -48,62 +63,50 @@ namespace MCGalaxy {
                 });
             }
 
-            public static void HandlePlayerDisconnect(Player p) {
-                // lock (GetCacheLock(channel)) {
-                // TODO ForChannel.Keys
-                // }
-            }
+            public StreamTarget[] CreateTargets(Scope scope, UInt16 dataLength) {
+                var targets = scope.GetPlayers()
+                    .Select((p) => {
+                        var outgoingIds = this.outgoingIds.GetOrAdd(p, (_) => new HashSet<byte>());
 
-            private void _HandlePlayerDisconnect(Player p) {
-                // TODO
-            }
+                        // find free id for target
+                        byte targetStreamId = 0;
+                        bool found;
+                        while (true) {
+                            if (!outgoingIds.Contains(targetStreamId)) {
+                                found = true;
+                                break;
+                            }
 
-
-            public StreamTarget[] StoreTargets(Scope scope) {
-                var players = scope.GetPlayers();
-
-                var targetsList = new List<StreamTarget>();
-                foreach (var p in players) {
-                    var outgoingIds = this.outgoingIds.GetOrAdd(p, (_) => new HashSet<byte>());
-
-                    // find free id for target
-                    byte targetStreamId = 0;
-                    bool found;
-                    while (true) {
-                        if (!outgoingIds.Contains(targetStreamId)) {
-                            found = true;
-                            break;
+                            if (targetStreamId == 0xFF) {
+                                found = false;
+                                break;
+                            }
+                            targetStreamId += 1;
+                        }
+                        if (!found) {
+                            // skip this player
+                            Warn(
+                                "couldn't find free outgoing stream id for {0}",
+                                p.truename
+                            );
+                            return null;
                         }
 
-                        if (targetStreamId == 0xFF) {
-                            found = false;
-                            break;
-                        }
-                        targetStreamId += 1;
-                    }
-                    if (!found) {
-                        // skip this player
-                        Warn(
-                            "couldn't find free outgoing stream id for {0}",
-                            p.truename
+                        // reserve outgoing id on target
+                        Debug(
+                            "new outgoing ids: {0} {1} -> {2} {3}",
+                            scope.streamId, scope.sender.truename,
+                            targetStreamId, p.truename
                         );
-                        continue;
-                    }
-
-                    // reserve outgoing id on target
-                    Debug(
-                        "new outgoing ids: {0} {1} -> {2} {3}",
-                        scope.streamId, scope.sender.truename,
-                        targetStreamId, p.truename
-                    );
-                    outgoingIds.Add(targetStreamId);
-                    targetsList.Add(new StreamTarget {
-                        player = p,
-                        streamId = targetStreamId,
-                    });
-                }
-
-                var targets = targetsList.ToArray();
+                        outgoingIds.Add(targetStreamId);
+                        return new StreamTarget(
+                            p,
+                            targetStreamId,
+                            dataLength
+                        );
+                    })
+                    .Where((target) => target != null)
+                    .ToArray();
 
                 var idToTargets = incomingIds.GetOrAdd(scope.sender, (_) => new ConcurrentDictionary<byte, StreamTarget[]>());
                 // make note of new stream from client
@@ -114,14 +117,76 @@ namespace MCGalaxy {
             }
 
             public StreamTarget[] GetTargets(Player sender, byte streamId) {
-                if (incomingIds.TryGetValue(sender, out var value)) {
-                    if (value.TryGetValue(streamId, out var scope)) {
-                        return scope;
+                if (this.incomingIds.TryGetValue(sender, out var incomingIds)) {
+                    if (incomingIds.TryGetValue(streamId, out var targets)) {
+                        return targets;
                     }
                 }
 
-                return null;
+                throw new Exception(
+                    string.Format(
+                        "couldn't find targets for {0} stream {1}",
+                        sender.truename,
+                        streamId
+                    )
+                );
             }
+
+
+
+            public static void HandlePlayerDisconnectAll(Player p) {
+                for (byte channel = 0; channel <= 255; channel++) {
+                    Store.With(channel, (store) => {
+                        store.HandlePlayerDisconnect(p);
+                    });
+                }
+            }
+
+            private void HandlePlayerDisconnect(Player p) {
+                if (this.outgoingIds.TryRemove(p, out var outgoingIds)) {
+                    Debug(
+                        "player disconnected with {0} outgoing streams left",
+                        outgoingIds.Count
+                    );
+                }
+                if (this.incomingIds.TryRemove(p, out var incomingIds)) {
+                    Debug(
+                        "player disconnected with {0} incoming streams left",
+                        incomingIds.Count
+                    );
+                    foreach (var pair in incomingIds) {
+                        foreach (var target in pair.Value) {
+                            CleanupTarget(target);
+                        }
+                    }
+                }
+            }
+
+            public void CleanupFromSender(Player sender, byte incomingStreamId) {
+                Debug(
+                    "cleanup for sender {0}",
+                    sender.truename
+                );
+                if (incomingIds.TryGetValue(sender, out var idToTargets)) {
+                    // make note of new stream from client
+                    if (idToTargets.TryRemove(incomingStreamId, out var targets)) {
+                        foreach (var target in targets) {
+                            CleanupTarget(target);
+                        }
+                    }
+                }
+            }
+            public void CleanupTarget(StreamTarget target) {
+                Debug(
+                    "cleanup target {0}",
+                    target.player.truename
+                );
+                if (this.outgoingIds.TryGetValue(target.player, out var outgoingIds)) {
+                    outgoingIds.Remove(target.streamId);
+                }
+            }
+
+
         }
 
 
