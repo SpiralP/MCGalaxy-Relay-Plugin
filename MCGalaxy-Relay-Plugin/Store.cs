@@ -114,16 +114,20 @@ namespace MCGalaxy {
                     .Where((target) => target != null)
                     .ToArray();
 
-                var idToTargets = incomingIds.GetOrAdd(scope.sender, (_) => new ConcurrentDictionary<byte, StreamTarget[]>());
-                // make note of new stream from client
-                var ag = idToTargets.AddOrUpdate(scope.streamId, (_) => targets, (_, _) => {
-                    Debug("restarting stream for {0} ({1})", scope.sender.truename, scope.streamId);
+                if (targets.Length != 0) {
+                    var idToTargets = incomingIds.GetOrAdd(scope.sender, (_) => new ConcurrentDictionary<byte, StreamTarget[]>());
+                    // make note of new stream from client
+                    var ag = idToTargets.AddOrUpdate(scope.streamId, (_) => targets, (_, _) => {
+                        Debug("restarting stream for {0} ({1})", scope.sender.truename, scope.streamId);
+                        return targets;
+                    });
+
+                    StartTimeoutTimer(scope.sender, scope.streamId);
+
+                    return ag;
+                } else {
                     return targets;
-                });
-
-                StartTimeoutTimer(scope.sender, scope.streamId);
-
-                return ag;
+                }
             }
 
             public StreamTarget[] GetTargets(Player sender, byte streamId) {
