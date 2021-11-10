@@ -56,6 +56,7 @@ namespace MCGalaxy {
 
             public virtual Player[] GetPlayers() {
                 return PlayerInfo.Online.Items
+                    .Where((p) => p != sender)
                     .Where((p) => p.Supports(CpeExt.PluginMessages))
                     .ToArray();
             }
