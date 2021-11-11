@@ -126,6 +126,7 @@ namespace MCGalaxy {
 
                     return ag;
                 } else {
+                    Debug("no targets");
                     return targets;
                 }
             }
@@ -149,8 +150,8 @@ namespace MCGalaxy {
 
 
             public static void HandlePlayerDisconnectAll(Player p) {
-                for (byte channel = 0; channel <= 255; channel++) {
-                    Store.With(channel, (store) => {
+                for (int channel = 0; channel <= 255; channel++) {
+                    Store.With((byte)channel, (store) => {
                         store.HandlePlayerDisconnect(p);
                     });
                 }
@@ -159,6 +160,7 @@ namespace MCGalaxy {
             private void HandlePlayerDisconnect(Player p) {
                 if (this.timers.TryRemove(p, out var timers)) {
                     foreach (var pair in timers) {
+                        Debug("ClearTimeoutTimer {0}", pair.Key);
                         ClearTimeoutTimer(p, pair.Key);
                     }
                 }
@@ -175,6 +177,7 @@ namespace MCGalaxy {
                     );
                     foreach (var pair in incomingIds) {
                         foreach (var target in pair.Value) {
+                            Debug("CleanupTarget");
                             CleanupTarget(target);
                         }
                     }
