@@ -8,6 +8,7 @@ namespace MCGalaxy {
         public enum ChannelType : byte {
             Cef = 200,
             VoiceChat = 201,
+            ChatBubbles = 202,
         }
 
         public struct Flags {
