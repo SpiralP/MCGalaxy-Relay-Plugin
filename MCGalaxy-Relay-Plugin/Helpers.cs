@@ -1,6 +1,6 @@
 namespace MCGalaxy {
     public sealed partial class MCGalaxyRelayPlugin {
-        private static readonly bool debug = true;
+        private static readonly bool debug = false;
         private static void Debug(string format, params object[] args) {
             if (!debug) return;
             Logger.Log(LogType.Debug, format, args);
