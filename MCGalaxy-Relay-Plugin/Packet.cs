@@ -48,6 +48,10 @@ namespace MCGalaxy {
                 );
 
                 foreach (var target in targets) {
+                    if (!target.player.Supports(CpeExt.PluginMessages, 1)) {
+                        continue;
+                    }
+
                     byte[] data = BuildOutgoingPacket(target);
                     try {
                         target.player.Send(Packet.PluginMessage(channel, data));
