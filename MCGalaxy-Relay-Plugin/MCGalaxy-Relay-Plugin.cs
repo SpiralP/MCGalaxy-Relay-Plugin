@@ -6,7 +6,7 @@ namespace MCGalaxy {
         public override string name => "Relay";
         public override string creator => "SpiralP";
 
-        public override string MCGalaxy_Version => "1.9.3.6";
+        public override string MCGalaxy_Version => "1.9.5.3";
 
         public override void Load(bool isStartup) {
             OnPlayerDisconnectEvent.Register(OnPlayerDisconnect, Priority.Low);
