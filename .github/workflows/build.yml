@@ -8,26 +8,30 @@ on:
     tags: ["*"]
   workflow_dispatch:
 
+permissions:
+  contents: write # for checkout, upload-artifact, and action-gh-release
+
 jobs:
-  # copied from MCGalaxy
   build:
-    runs-on: ubuntu-22.04
-    env:
-      BUILD_CONFIGURATION: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || 'Debug' }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - run: msbuild ./MCGalaxy-Relay-Plugin.sln /p:Configuration=Release /p:TargetFrameworkVersion=v2.0 /p:DefineConstants="NET_20"
+      - uses: cachix/install-nix-action@v31
+
+      - run: |
+          nix build '.?submodules=1#default' \
+            --print-build-logs --no-update-lock-file
 
       - uses: actions/upload-artifact@v4
         with:
           name: MCGalaxy-Relay-Plugin
-          path: MCGalaxy-Relay-Plugin/bin/${{ env.BUILD_CONFIGURATION }}/MCGalaxy-Relay-Plugin.dll
+          path: result/lib/MCGalaxy-Relay-Plugin.dll
 
       - uses: softprops/action-gh-release@v2
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         with:
-          files: MCGalaxy-Relay-Plugin/bin/${{ env.BUILD_CONFIGURATION }}/MCGalaxy-Relay-Plugin.dll
+          files: result/lib/MCGalaxy-Relay-Plugin.dll
