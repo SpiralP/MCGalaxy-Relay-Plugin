@@ -7,9 +7,10 @@ namespace MCGalaxy {
     public sealed partial class MCGalaxyRelayPlugin {
 
         public enum ScopeKind : byte {
-            Player = 0,
+            PlayerEntity = 0,
             Map = 1,
             Server = 2,
+            PlayerTab = 3,
         }
 
         public abstract class Scope {
@@ -37,8 +38,8 @@ namespace MCGalaxy {
                 byte scopeKind,
                 byte scopeExtra
             ) {
-                if (scopeKind == (byte)ScopeKind.Player) {
-                    return new ScopePlayer(sender, channel, streamId, scopeExtra);
+                if (scopeKind == (byte)ScopeKind.PlayerEntity) {
+                    return new ScopePlayerEntity(sender, channel, streamId, scopeExtra);
                 } else if (scopeKind == (byte)ScopeKind.Map) {
                     return new ScopeMap(sender, channel, streamId, scopeExtra);
                 } else if (scopeKind == (byte)ScopeKind.Server) {
@@ -65,28 +66,32 @@ namespace MCGalaxy {
 
         // a single player to target;
         // ScopeExtra: { u8 player id }
-        public class ScopePlayer : Scope {
-            private byte playerId;
+        public class ScopePlayerEntity : Scope {
+            /// <summary>
+            /// A client wants to send a message to a player it can see who has this ID
+            /// </summary>
+            private readonly byte targetPlayerID;
 
-            public ScopePlayer(
+            public ScopePlayerEntity(
                 Player sender,
                 byte channel,
                 byte streamId,
                 byte extra
             ) : base(
-                ScopeKind.Player,
+                ScopeKind.PlayerEntity,
                 sender,
                 channel,
                 streamId
             ) {
-                this.playerId = extra;
+                this.targetPlayerID = extra;
             }
 
             public override Player[] GetPlayers() {
-                var playerId = this.playerId;
-
                 return base.GetPlayers()
-                    .Where((p) => p.id == playerId)
+                    .Where((candidate) => {
+                        byte candidateID;
+                        return sender.EntityList.GetID(candidate, out candidateID) && candidateID == targetPlayerID;
+                    })
                     .ToArray();
             }
         }
@@ -163,6 +168,10 @@ namespace MCGalaxy {
             }
         }
 
+        //TODO once EntityList has GetTabID api
+        public class ScopePlayerTab {
+
+        }
 
         public static bool HasPlugin(Player p, byte channelType) {
             if (PlayerSentOnChannel.TryGetValue(p, out var knownChannels)) {
