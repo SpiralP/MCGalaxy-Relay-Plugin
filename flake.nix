@@ -11,7 +11,7 @@
       makePackages = (pkgs: {
         default = pkgs.stdenv.mkDerivation {
           pname = "MCGalaxy-Relay-Plugin";
-          version = "0.0.1-${self.shortRev or self.dirtyShortRev}";
+          version = "0.0.1"; # must be only 3 numbers or else dotnet freaks
 
           src = lib.sourceByRegex ./. [
             "^MCGalaxy-Relay-Plugin(/.*)?$"
