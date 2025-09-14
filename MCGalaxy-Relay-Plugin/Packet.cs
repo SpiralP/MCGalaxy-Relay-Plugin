@@ -53,6 +53,8 @@ namespace MCGalaxy {
                     }
 
                     byte[] data = BuildOutgoingPacket(target);
+                    if (data == null) continue;
+
                     try {
                         target.player.Send(Packet.PluginMessage(channel, data));
                     } catch (Exception e) {
@@ -148,8 +150,10 @@ namespace MCGalaxy {
                 }.Encode();
 
                 // scope, scope extra
-                data[i++] = (byte)ScopeKind.Player;
-                data[i++] = sender.id;
+                data[i++] = (byte)ScopeKind.PlayerEntity;
+                byte senderID;
+                if (!target.player.EntityList.GetID(sender, out senderID)) return null; //TODO: Figure out how this should work with server scope
+                data[i++] = senderID;
 
                 NetUtils.WriteU16(dataLength, data, i);
                 i += 2;
